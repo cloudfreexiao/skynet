@@ -40,7 +40,7 @@ end
 
 function chan:publish(...)
 	local c = assert(self.channel)
-	skynet.call(multicastd, "lua", "PUB", c, mc.pack(self.__pack(...)))
+	skynet.send(multicastd, "lua", "PUB", c, mc.pack(self.__pack(...)))
 end
 
 function chan:subscribe()
