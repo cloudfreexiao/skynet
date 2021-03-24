@@ -99,14 +99,14 @@ daemon_init(const char *pidfile) {
 		return 1;
 	}
 
-#ifdef __APPLE__
-	fprintf(stderr, "'daemon' is deprecated: first deprecated in OS X 10.5 , use launchd instead.\n");
-#else
+// #ifdef __APPLE__
+// 	fprintf(stderr, "'daemon' is deprecated: first deprecated in OS X 10.5 , use launchd instead.\n");
+// #else
 	if (daemon(1,1)) {
 		fprintf(stderr, "Can't daemonize.\n");
 		return 1;
 	}
-#endif
+// #endif
 
 	pid = write_pid(pidfile);
 	if (pid == 0) {
