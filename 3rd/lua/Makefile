@@ -6,7 +6,7 @@
 # Your platform. See PLATS for possible values.
 PLAT= guess
 
-CC= gcc -std=gnu99
+CC= gcc -std=gnu99 -g -DLUA_USE_APICHECK
 CFLAGS= -O2 -Wall -Wextra $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
