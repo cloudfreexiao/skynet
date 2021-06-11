@@ -14,6 +14,3 @@ lua_path = root.."lualib/?.lua;"..root.."lualib/?/init.lua"
 lua_cpath = root.."../luaclib/?.so;" .. root .. "luaclib/?.so"
 snax = root.."examples/?.lua;"..root.."test/?.lua"
 cpath = root.."cservice/?.so"
-
-vscdbg_open = "$vscdbg_open"
-vscdbg_bps = [=[$vscdbg_bps]=]

@@ -362,7 +362,7 @@ function command.output(addr, category, msg, source, line)
 end
 
 ------------------------------------------
--- service start
+-- service start 
 
 skynet.start(function()
     skynet.dispatch("lua", function(session, address, cmd, ...)
@@ -374,7 +374,7 @@ skynet.start(function()
         end
     end)
 
-    local pbs = skynet.getenv("vscdbg_bps")
+    local pbs = os.getenv("vscdbg_bps")
     local ok, bps = pcall(cjson.decode, pbs)
     if ok then
         breakpoints = bps
