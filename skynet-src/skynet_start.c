@@ -185,12 +185,7 @@ thread_worker(void *p) {
 static void
 start(int thread, int exlusive) {
 
-#ifdef _MSC_VER
-	thrd_t* pid = (thrd_t*)skynet_malloc(((size_t)thread+3)*sizeof(*pid));
-	memset(pid, 0, ((size_t)thread + 3) * sizeof(*pid));
-#else
 	thrd_t pid[thread+3];
-#endif
 
 	struct monitor *m = skynet_malloc(sizeof(*m));
 	memset(m, 0, sizeof(*m));
@@ -221,12 +216,7 @@ start(int thread, int exlusive) {
 		2, 2, 2, 2, 2, 2, 2, 2, 
 		3, 3, 3, 3, 3, 3, 3, 3, };
 
-#ifdef _MSC_VER
-	struct worker_parm* wp = (struct worker_parm*)skynet_malloc(thread * sizeof(*wp));
-	memset(wp, 0, thread * sizeof(*wp));
-#else
 	struct worker_parm wp[thread];
-#endif
 
 	for (i=0;i<thread;i++) {
 		wp[i].m = m;
@@ -250,27 +240,14 @@ start(int thread, int exlusive) {
 		thrd_join(pid[i], NULL); 
 	}
 
-#ifdef _MSC_VER
-	skynet_free(wp);
-	skynet_free(pid);
-#endif
-
 	free_monitor(m);
 }
 
 static void
 bootstrap(struct skynet_context * logger, const char * cmdline) {
 	int sz = strlen(cmdline);
-
-#ifdef _MSC_VER
-	char *name =(char*)skynet_malloc(sz+1);
-	char *args = (char*)skynet_malloc(sz+1);
-	memset(name, 0, sz + 1);
-	memset(args, 0, sz + 1);
-#else
 	char name[sz+1];
 	char args[sz+1];
-#endif
 
 	int arg_pos;
 	sscanf(cmdline, "%s", name);  
@@ -285,12 +262,6 @@ bootstrap(struct skynet_context * logger, const char * cmdline) {
 	}
 	
 	struct skynet_context *ctx = skynet_context_new(name, 0, args);
-
-#ifdef _MSC_VER
-	skynet_free(name);
-	skynet_free(args);
-#endif
-
 	if (ctx == NULL) {
 		skynet_error(NULL, "Bootstrap error : %s\n", cmdline);
 		skynet_context_dispatchall(logger);

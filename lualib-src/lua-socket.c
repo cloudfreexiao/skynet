@@ -451,34 +451,19 @@ address_port(lua_State *L, char *tmp, const char * addr, int port_index, int *po
 
 static int
 lconnect(lua_State *L) {
-
 	size_t sz = 0;
 	const char * addr = luaL_checklstring(L,1,&sz);
-#ifdef _MSC_VER
-	char* tmp = (char*)skynet_malloc(sz + 1);
-	memset(tmp, 0, sz + 1);
-#else
 	char tmp[sz];
-#endif
-
-	int ret = 1;
 	int port = 0;
 	const char * host = address_port(L, tmp, addr, 2, &port);
 	if (port == 0) {
-		ret = luaL_error(L, "Invalid port");
-		goto _my_exit;
+		return luaL_error(L, "Invalid port");
 	}
-
 	struct skynet_context * ctx = lua_touserdata(L, lua_upvalueindex(1));
 	int id = skynet_socket_connect(ctx, host, port);
 	lua_pushinteger(L, id);
 
-	_my_exit:
-		#ifdef _MSC_VER
-			skynet_free(tmp);
-		#endif
-
-	return ret;
+	return 1;
 }
 
 static int
@@ -655,14 +640,7 @@ ludp(lua_State *L) {
 	struct skynet_context * ctx = lua_touserdata(L, lua_upvalueindex(1));
 	size_t sz = 0;
 	const char * addr = lua_tolstring(L,1,&sz);
-
-#ifdef _MSC_VER
-	char* tmp = (char*)skynet_malloc(sz + 1);
-	memset(tmp, 0, sz + 1);
-#else
 	char tmp[sz];
-#endif
-
 	int port = 0;
 	const char * host = NULL;
 	if (addr) {
@@ -670,9 +648,6 @@ ludp(lua_State *L) {
 	}
 
 	int id = skynet_socket_udp(ctx, host, port);
-#ifdef _MSC_VER
-	skynet_free(tmp);
-#endif
 	if (id < 0) {
 		return luaL_error(L, "udp init failed");
 	}
@@ -686,25 +661,14 @@ ludp_connect(lua_State *L) {
 	int id = luaL_checkinteger(L, 1);
 	size_t sz = 0;
 	const char * addr = luaL_checklstring(L,2,&sz);
-
-#ifdef _MSC_VER
-	char* tmp = (char*)skynet_malloc(sz + 1);
-	memset(tmp, 0, sz + 1);
-#else
 	char tmp[sz];
-#endif
-
 	int port = 0;
 	const char * host = NULL;
 	if (addr) {
 		host = address_port(L, tmp, addr, 3, &port);
 	}
 
-	int ret = skynet_socket_udp_connect(ctx, id, host, port);
-#ifdef _MSC_VER
-	skynet_free(tmp);
-#endif
-	if (ret) {
+	if (skynet_socket_udp_connect(ctx, id, host, port)) {
 		return luaL_error(L, "udp connect failed");
 	}
 
