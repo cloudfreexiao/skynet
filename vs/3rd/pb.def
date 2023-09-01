@@ -1,3 +1,0 @@
-EXPORTS
-	luaopen_pb
-    luaopen_pb_unsafe

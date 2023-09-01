@@ -1,6 +1,12 @@
 #pragma once
+
 #include <assert.h>
 #include <stdio.h>
+#include <time.h>
+#include <process.h>
+#include <io.h>
+#include <assert.h>
+#include <stdlib.h>
 
 #define random rand
 #define srandom srand
@@ -27,7 +33,7 @@ struct sigaction {
 };
 enum { SIGPIPE, SIGHUP, SA_RESTART };
 void sigfillset(int *flag);
-void sigaction(int flag, struct sigaction *action, int param);
+void sigaction(int flag, struct sigaction *action, void* param);
 
 int pipe(int fd[2]);
 int daemon(int a, int b);
@@ -40,6 +46,10 @@ int fcntl(int fd, int cmd, long arg);
 
 char *strsep(char **stringp, const char *delim);
 
-int write(int fd, const void *ptr, size_t sz);
-int read(int fd, void *buffer, size_t sz);
+int write(int fd, const void* ptr, unsigned int sz);
+int read(int fd, void* buffer, unsigned int sz);
 int close(int fd);
+
+#define getpid _getpid
+#define open _open
+#define dup2 _dup2

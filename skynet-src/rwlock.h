@@ -3,39 +3,6 @@
 
 /* read write lock */
 
-#if defined(_WIN32)
-#include <synchapi.h>
-
-struct rwlock {
-    SRWLOCK srw;
-};
-
-static inline void
-rwlock_init(struct rwlock *lock) {
-    InitializeSRWLock(&lock->srw);
-}
-
-static inline void
-rwlock_rlock(struct rwlock *lock) {
-    AcquireSRWLockShared(&lock->srw);
-}
-
-static inline void
-rwlock_runlock(struct rwlock *lock) {
-    ReleaseSRWLockShared(&lock->srw);
-}
-
-static inline void
-rwlock_wlock(struct rwlock *lock) {
-    AcquireSRWLockExclusive(&lock->srw);
-}
-
-static inline void
-rwlock_wunlock(struct rwlock *lock) {
-    ReleaseSRWLockExclusive(&lock->srw);
-}
-
-#else
 #include "atomic.h"
 
 struct rwlock {
@@ -82,4 +49,3 @@ rwlock_runlock(struct rwlock* lock) {
 }
 #endif
 
-#endif

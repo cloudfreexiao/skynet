@@ -1,6 +1,5 @@
 #include "unistd.h"
-#include <assert.h>
-#include <time.h>
+
 
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
@@ -14,7 +13,7 @@ static LONGLONG get_cpu_freq() {
     return freq.QuadPart;
 }
 
-int kill(pid_t pid, int exit_code) { return TerminateProcess(pid, exit_code); }
+int kill(pid_t pid, int exit_code) { return TerminateProcess((void*)pid, exit_code); }
 
 #define NANOSEC 1000000000
 #define MICROSEC 1000000
@@ -81,7 +80,7 @@ void sigfillset(int* flag) {
     // Not implemented
 }
 
-void sigaction(int flag, struct sigaction* action, int param) {
+void sigaction(int flag, struct sigaction* action, void* param) {
     // Not implemented
 }
 
@@ -139,7 +138,7 @@ int pipe(int fd[2]) {
     return 0;
 }
 
-int write(int fd, const void* ptr, size_t sz) {
+int write(int fd, const void* ptr, unsigned int sz) {
 
     WSABUF vecs[1];
     vecs[0].buf = ptr;
@@ -152,7 +151,7 @@ int write(int fd, const void* ptr, size_t sz) {
         return bytesSent;
 }
 
-int read(int fd, void* buffer, size_t sz) {
+int read(int fd, void* buffer, unsigned int sz) {
 
     WSABUF vecs[1];
     vecs[0].buf = buffer;
