@@ -138,36 +138,36 @@ int pipe(int fd[2]) {
     return 0;
 }
 
-// int read(int fd, void* buffer, size_t sz) {
+ int read(int fd, void* buffer, size_t sz) {
 
-//     WSABUF vecs[1];
-//     vecs[0].buf = buffer;
-//     vecs[0].len = sz;
+     WSABUF vecs[1];
+     vecs[0].buf = buffer;
+     vecs[0].len = sz;
 
-//     DWORD bytesRecv = 0;
-//     DWORD flags = 0;
-//     if (WSARecv(fd, vecs, 1, &bytesRecv, &flags, NULL, NULL)) {
-//         if (WSAGetLastError() == WSAECONNRESET)
-//             return 0;
-//         return -1;
-//     }
-//     else{
-//         return bytesRecv;
-//     }
-// }
+     DWORD bytesRecv = 0;
+     DWORD flags = 0;
+     if (WSARecv(fd, vecs, 1, &bytesRecv, &flags, NULL, NULL)) {
+         if (WSAGetLastError() == WSAECONNRESET)
+             return 0;
+         return -1;
+     }
+     else{
+         return bytesRecv;
+     }
+ }
 
-// int write(int fd, const void* ptr, size_t sz) {
+ int write(int fd, const void* ptr, size_t sz) {
 
-//     WSABUF vecs[1];
-//     vecs[0].buf = ptr;
-//     vecs[0].len = sz;
+     WSABUF vecs[1];
+     vecs[0].buf = ptr;
+     vecs[0].len = sz;
 
-//     DWORD bytesSent;
-//     if (WSASend(fd, vecs, 1, &bytesSent, 0, NULL, NULL))
-//         return -1;
-//     else
-//         return bytesSent;
-// }
+     DWORD bytesSent;
+     if (WSASend(fd, vecs, 1, &bytesSent, 0, NULL, NULL))
+         return -1;
+     else
+         return bytesSent;
+ }
 
 int close(int fd) {
     shutdown(fd, SD_BOTH);

@@ -7,6 +7,7 @@
 #include <process.h>
 #include <io.h>
 #include <stdlib.h>
+#include <direct.h>
 
 #define random rand
 #define srandom srand
@@ -50,8 +51,8 @@ int fcntl(int fd, int cmd, long arg);
 
 char *strsep(char **stringp, const char *delim);
 
-// int write(int fd, const void *ptr, size_t sz);
-// int read(int fd, void *buffer, size_t sz);
+int write(int fd, const void *ptr, size_t sz);
+int read(int fd, void *buffer, size_t sz);
 int close(int fd);
 
 
