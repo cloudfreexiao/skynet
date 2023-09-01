@@ -1,11 +1,21 @@
-#pragma once
+#ifndef _UNISTD_H
+#define _UNISTD_H
+
 #include <assert.h>
 #include <stdio.h>
+#include <time.h>
+#include <process.h>
+#include <io.h>
+#include <stdlib.h>
 
 #define random rand
 #define srandom srand
 #define snprintf _snprintf
 #define localtime_r _localtime64_s
+
+#define getpid _getpid
+#define open _open
+#define dup2 _dup2
 
 #define pid_t int
 
@@ -27,7 +37,7 @@ struct sigaction {
 };
 enum { SIGPIPE, SIGHUP, SA_RESTART };
 void sigfillset(int *flag);
-void sigaction(int flag, struct sigaction *action, int param);
+void sigaction(int flag, struct sigaction *action, void* param);
 
 int pipe(int fd[2]);
 int daemon(int a, int b);
@@ -40,6 +50,10 @@ int fcntl(int fd, int cmd, long arg);
 
 char *strsep(char **stringp, const char *delim);
 
-int write(int fd, const void *ptr, size_t sz);
-int read(int fd, void *buffer, size_t sz);
+// int write(int fd, const void *ptr, size_t sz);
+// int read(int fd, void *buffer, size_t sz);
 int close(int fd);
+
+
+#endif
+

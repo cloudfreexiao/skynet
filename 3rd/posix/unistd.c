@@ -1,6 +1,5 @@
 #include "unistd.h"
 #include <assert.h>
-#include <time.h>
 
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
@@ -14,7 +13,7 @@ static LONGLONG get_cpu_freq() {
     return freq.QuadPart;
 }
 
-int kill(pid_t pid, int exit_code) { return TerminateProcess(pid, exit_code); }
+int kill(pid_t pid, int exit_code) { return TerminateProcess((void *)pid, exit_code); }
 
 #define NANOSEC 1000000000
 #define MICROSEC 1000000
@@ -81,7 +80,7 @@ void sigfillset(int* flag) {
     // Not implemented
 }
 
-void sigaction(int flag, struct sigaction* action, int param) {
+void sigaction(int flag, struct sigaction* action, void* param) {
     // Not implemented
 }
 
@@ -139,36 +138,36 @@ int pipe(int fd[2]) {
     return 0;
 }
 
-int write(int fd, const void* ptr, size_t sz) {
+// int read(int fd, void* buffer, size_t sz) {
 
-    WSABUF vecs[1];
-    vecs[0].buf = ptr;
-    vecs[0].len = sz;
+//     WSABUF vecs[1];
+//     vecs[0].buf = buffer;
+//     vecs[0].len = sz;
 
-    DWORD bytesSent;
-    if (WSASend(fd, vecs, 1, &bytesSent, 0, NULL, NULL))
-        return -1;
-    else
-        return bytesSent;
-}
+//     DWORD bytesRecv = 0;
+//     DWORD flags = 0;
+//     if (WSARecv(fd, vecs, 1, &bytesRecv, &flags, NULL, NULL)) {
+//         if (WSAGetLastError() == WSAECONNRESET)
+//             return 0;
+//         return -1;
+//     }
+//     else{
+//         return bytesRecv;
+//     }
+// }
 
-int read(int fd, void* buffer, size_t sz) {
+// int write(int fd, const void* ptr, size_t sz) {
 
-    WSABUF vecs[1];
-    vecs[0].buf = buffer;
-    vecs[0].len = sz;
+//     WSABUF vecs[1];
+//     vecs[0].buf = ptr;
+//     vecs[0].len = sz;
 
-    DWORD bytesRecv = 0;
-    DWORD flags = 0;
-    if (WSARecv(fd, vecs, 1, &bytesRecv, &flags, NULL, NULL)) {
-        if (WSAGetLastError() == WSAECONNRESET)
-            return 0;
-        return -1;
-    }
-    else{
-        return bytesRecv;
-    }
-}
+//     DWORD bytesSent;
+//     if (WSASend(fd, vecs, 1, &bytesSent, 0, NULL, NULL))
+//         return -1;
+//     else
+//         return bytesSent;
+// }
 
 int close(int fd) {
     shutdown(fd, SD_BOTH);

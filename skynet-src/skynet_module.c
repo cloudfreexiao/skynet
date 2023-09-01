@@ -31,12 +31,7 @@ _try_open(struct modules *m, const char * name) {
 	int sz = path_size + name_size;
 	//search path
 	void * dl = NULL;
-#ifdef _MSC_VER
-	assert(sz <= 1024);
-	char tmp[1024];
-#else
 	char tmp[sz];
-#endif
 
 	do
 	{
@@ -84,12 +79,7 @@ get_api(struct skynet_module *mod, const char *api_name) {
 	size_t name_size = strlen(mod->name);
 	size_t api_size = strlen(api_name);
 
-#ifdef _MSC_VER
-	assert(name_size + api_size + 1 <= 4096);
-	char tmp[4096];
-#else
 	char tmp[name_size + api_size + 1];
-#endif
 
 	memcpy(tmp, mod->name, name_size);
 	memcpy(tmp+name_size, api_name, api_size+1);

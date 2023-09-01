@@ -1,7 +1,6 @@
 #ifndef poll_socket_wepoll_h
 #define poll_socket_wepoll_h
 
-#include "skynet.h"
 #include <unistd.h>
 
 
@@ -37,8 +36,7 @@ static int sp_enable(poll_fd efd, SOCKET sock, void *ud, bool read_enable,
 }
 
 static int sp_wait(poll_fd efd, struct event *e, int max) {
-  struct epoll_event *ev =
-      (struct epoll_event *)skynet_malloc(sizeof(struct epoll_event *) * max);
+  struct epoll_event ev[max];
   int n = epoll_wait(efd, ev, max, -1);
   int i;
   for (i = 0; i < n; i++) {
@@ -49,7 +47,6 @@ static int sp_wait(poll_fd efd, struct event *e, int max) {
     e[i].error = (flag & EPOLLERR) != 0;
     e[i].eof = (flag & EPOLLHUP) != 0;
   }
-  skynet_free(ev);
   return n;
 }
 

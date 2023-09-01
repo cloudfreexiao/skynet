@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #ifdef CALLING_CHECK
 
@@ -435,14 +436,8 @@ cmd_query(struct skynet_context * context, const char * param) {
 static const char *
 cmd_name(struct skynet_context * context, const char * param) {
 	int size = strlen(param);
-#ifdef _MSC_VER
-	assert(size <= 1024);
-	char name[1024+1];
-	char handle[1024+1];
-#else
 	char name[size+1];
 	char handle[size+1];
-#endif
 	sscanf(param,"%s %s",name,handle);
 	if (handle[0] != ':') {
 		return NULL;
@@ -491,12 +486,7 @@ cmd_kill(struct skynet_context * context, const char * param) {
 static const char *
 cmd_launch(struct skynet_context * context, const char * param) {
 	size_t sz = strlen(param);
-#ifdef _MSC_VER
-	assert(sz <= 1024);
-	char tmp[1024+1];
-#else
 	char tmp[sz+1];
-#endif
 	strcpy(tmp, param);
 
 	char * ptr = tmp;
@@ -521,12 +511,7 @@ cmd_getenv(struct skynet_context * context, const char * param) {
 static const char *
 cmd_setenv(struct skynet_context * context, const char * param) {
 	size_t sz = strlen(param);
-#ifdef _MSC_VER
-	assert(sz <= 1024);
-	char key[1024+1];
-#else
 	char key[sz+1];
-#endif
 	int i;
 	for (i=0;param[i] != ' ' && param[i];i++) {
 		key[i] = param[i];

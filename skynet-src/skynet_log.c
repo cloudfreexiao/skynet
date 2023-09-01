@@ -12,12 +12,7 @@ skynet_log_open(struct skynet_context * ctx, uint32_t handle) {
 	if (logpath == NULL)
 		return NULL;
 	size_t sz = strlen(logpath);
-#ifdef _MSC_VER
-	assert(sz <= 1024);
-	char tmp[1024 + 16];
-#else
 	char tmp[sz + 16];
-#endif
 	sprintf(tmp, "%s/%08x.log", logpath, handle);
 	FILE *f = fopen(tmp, "ab");
 	if (f) {
