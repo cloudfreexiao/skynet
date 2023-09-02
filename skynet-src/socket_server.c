@@ -420,10 +420,7 @@ socket_server_create(uint64_t time) {
 	ss->event_index = 0;
 	memset(&ss->soi, 0, sizeof(ss->soi));
 	FD_ZERO(&ss->rfds);
-
-#ifndef _MSC_VER
 	assert(ss->recvctrl_fd < FD_SETSIZE);
-#endif
 
 	return ss;
 }
