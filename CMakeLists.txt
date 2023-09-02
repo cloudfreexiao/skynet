@@ -32,7 +32,6 @@ aux_source_directory(3rd/lua LUA_LIB_SRC)
 list(REMOVE_ITEM LUA_LIB_SRC "3rd/lua/lua.c" "3rd/lua/luac.c" "3rd/lua/onelua.c")
 aux_source_directory(3rd/posix POSIX_SRC)
 
-
 message(STATUS "The value of LUA_LIB_SRC is: ${LUA_LIB_SRC}")
 add_library(liblua SHARED ${LUA_LIB_SRC})
 add_library(libposix SHARED ${POSIX_SRC})
@@ -61,6 +60,7 @@ set(LUA_CLIB_SKYNET_SRC
     lualib-src/lua-debugchannel.c
     lualib-src/lua-datasheet.c
     lualib-src/lua-sharetable.c
+    lualib-src/lua-vscdebugaux.c
 )
 message(STATUS "The value of LIB_SKYNET_SRC is: ${LIB_SKYNET_SRC}")
 add_library(skynetso SHARED ${LUA_CLIB_SKYNET_SRC})
@@ -77,8 +77,8 @@ add_library(md5 SHARED ${LUA_MD5_SRC})
 target_link_libraries(md5 liblua)
 
 # 生成动态库 client.so
-#add_library(client SHARED lualib-src/lua-clientsocket.c lualib-src/lua-crypt.c lualib-src/lsha1.c)
-#set_target_properties(client PROPERTIES PREFIX "")
+# add_library(client SHARED lualib-src/lua-clientsocket.c lualib-src/lua-crypt.c lualib-src/lsha1.c)
+# set_target_properties(client PROPERTIES PREFIX "")
 
 # 生成动态库 sproto.so
 add_library(sproto SHARED lualib-src/sproto/sproto.c lualib-src/sproto/lsproto.c)
@@ -89,7 +89,21 @@ aux_source_directory(3rd/lpeg LPEG_SRC)
 add_library(lpeg SHARED ${LPEG_SRC})
 target_link_libraries(lpeg liblua)
 
-set_target_properties(lpeg sproto md5 bson skynetso PROPERTIES
+#生成动态库 lfs.so
+aux_source_directory(3rd/luafilesystem LFS_SRC)
+add_library(lfs SHARED ${LFS_SRC})
+target_link_libraries(lfs liblua)
+
+#生成动态库 pb.so
+aux_source_directory(3rd/lua-protobuf PB_SRC)
+add_library(pb SHARED ${PB_SRC})
+target_link_libraries(pb liblua)
+
+#生成动态库 cjson.so
+add_library(cjson SHARED 3rd/lua-cjson/lua_cjson.c 3rd/lua-cjson/fpconv.c 3rd/lua-cjson/strbuf.c)
+target_link_libraries(cjson liblua)
+
+set_target_properties(lpeg sproto md5 bson skynetso lfs pb cjson PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/luaclib
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/luaclib
     PREFIX ""

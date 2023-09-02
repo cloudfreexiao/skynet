@@ -7,6 +7,7 @@
 #include <io.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <direct.h>
 
 #define random rand
 #define srandom srand
