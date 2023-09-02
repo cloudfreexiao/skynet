@@ -8,7 +8,7 @@
       "projectTarget": "skynet.exe",
       "name": "skynet.exe",
       "args": [
-        "examples\\config"
+        "examples\\config.exlusive"
       ]
     }
   ]

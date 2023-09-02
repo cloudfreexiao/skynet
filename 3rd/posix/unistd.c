@@ -80,6 +80,10 @@ void sigfillset(int* flag) {
     // Not implemented
 }
 
+void sigemptyset(int* flag) {
+    // Not implemented
+}
+
 void sigaction(int flag, struct sigaction* action, void* param) {
     // Not implemented
 }

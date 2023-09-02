@@ -34,6 +34,7 @@ struct sigaction {
 };
 enum { SIGPIPE, SIGHUP, SA_RESTART };
 void sigfillset(int *flag);
+void sigemptyset(int* flag);
 void sigaction(int flag, struct sigaction *action, void* param);
 
 int pipe(int fd[2]);

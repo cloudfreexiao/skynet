@@ -15,11 +15,11 @@
 #include <unistd.h>
 
 static int
-optint(const char *key, int opt) {
-	const char * str = skynet_getenv(key);
+optint(const char* key, int opt) {
+	const char* str = skynet_getenv(key);
 	if (str == NULL) {
 		char tmp[20];
-		sprintf(tmp,"%d",opt);
+		sprintf(tmp, "%d", opt);
 		skynet_setenv(key, tmp);
 		return opt;
 	}
@@ -27,18 +27,18 @@ optint(const char *key, int opt) {
 }
 
 static int
-optboolean(const char *key, int opt) {
-	const char * str = skynet_getenv(key);
+optboolean(const char* key, int opt) {
+	const char* str = skynet_getenv(key);
 	if (str == NULL) {
 		skynet_setenv(key, opt ? "true" : "false");
 		return opt;
 	}
-	return strcmp(str,"true")==0;
+	return strcmp(str, "true") == 0;
 }
 
-static const char *
-optstring(const char *key,const char * opt) {
-	const char * str = skynet_getenv(key);
+static const char*
+optstring(const char* key, const char* opt) {
+	const char* str = skynet_getenv(key);
 	if (str == NULL) {
 		if (opt) {
 			skynet_setenv(key, opt);
@@ -50,7 +50,7 @@ optstring(const char *key,const char * opt) {
 }
 
 static void
-_init_env(lua_State *L) {
+_init_env(lua_State* L) {
 	lua_pushnil(L);  /* first key */
 	while (lua_next(L, -2) != 0) {
 		int keyt = lua_type(L, -2);
@@ -58,37 +58,34 @@ _init_env(lua_State *L) {
 			fprintf(stderr, "Invalid config table\n");
 			exit(1);
 		}
-		const char * key = lua_tostring(L,-2);
-		if (lua_type(L,-1) == LUA_TBOOLEAN) {
-			int b = lua_toboolean(L,-1);
-			skynet_setenv(key,b ? "true" : "false" );
-		} else {
-			const char * value = lua_tostring(L,-1);
+		const char* key = lua_tostring(L, -2);
+		if (lua_type(L, -1) == LUA_TBOOLEAN) {
+			int b = lua_toboolean(L, -1);
+			skynet_setenv(key, b ? "true" : "false");
+		}
+		else {
+			const char* value = lua_tostring(L, -1);
 			if (value == NULL) {
 				fprintf(stderr, "Invalid config table key = %s\n", key);
 				exit(1);
 			}
-			skynet_setenv(key,value);
+			skynet_setenv(key, value);
 		}
-		lua_pop(L,1);
+		lua_pop(L, 1);
 	}
-	lua_pop(L,1);
+	lua_pop(L, 1);
 }
 
 int sigign() {
-
-#ifndef _MSC_VER
 	struct sigaction sa;
 	sa.sa_handler = SIG_IGN;
 	sa.sa_flags = 0;
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGPIPE, &sa, 0);
-#endif
-
 	return 0;
 }
 
-static const char * load_config = "\
+static const char* load_config = "\
 	local result = {}\n\
 	local function getenv(name) return assert(os.getenv(name), [[os.getenv() failed: ]] .. name) end\n\
 	local sep = package.config:sub(1,1)\n\
@@ -120,11 +117,12 @@ static const char * load_config = "\
 ";
 
 int
-main(int argc, char *argv[]) {
-	const char * config_file = NULL ;
+main(int argc, char* argv[]) {
+	const char* config_file = NULL;
 	if (argc > 1) {
 		config_file = argv[1];
-	} else {
+	}
+	else {
 		fprintf(stderr, "Need a config file. Please read skynet wiki : https://github.com/cloudwu/skynet/wiki/Config\n"
 			"usage: skynet configfilename\n");
 		return 1;
@@ -142,26 +140,26 @@ main(int argc, char *argv[]) {
 	luaL_initcodecache();
 #endif
 
-	struct lua_State *L = luaL_newstate();
+	struct lua_State* L = luaL_newstate();
 	luaL_openlibs(L);	// link lua lib
 
-	int err =  luaL_loadbufferx(L, load_config, strlen(load_config), "=[skynet config]", "t");
+	int err = luaL_loadbufferx(L, load_config, strlen(load_config), "=[skynet config]", "t");
 	assert(err == LUA_OK);
 	lua_pushstring(L, config_file);
 
 	err = lua_pcall(L, 1, 1, 0);
 	if (err) {
-		fprintf(stderr,"%s\n",lua_tostring(L,-1));
+		fprintf(stderr, "%s\n", lua_tostring(L, -1));
 		lua_close(L);
 		return 1;
 	}
 	_init_env(L);
 
-	config.thread = optint("thread",8);
-	config.exlusive = optint("exlusive",0);
-	config.module_path = optstring("cpath","./cservice/?.so");
+	config.thread = optint("thread", 8);
+	config.exlusive = optint("exlusive", 0);
+	config.module_path = optstring("cpath", "./cservice/?.so");
 	config.harbor = optint("harbor", 1);
-	config.bootstrap = optstring("bootstrap","snlua bootstrap");
+	config.bootstrap = optstring("bootstrap", "snlua bootstrap");
 	config.daemon = optstring("daemon", NULL);
 	config.logger = optstring("logger", NULL);
 	config.logservice = optstring("logservice", "logger");
