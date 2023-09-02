@@ -44,22 +44,22 @@ static struct mem_data mem_stats[SLOT_SIZE];
 #define raw_realloc je_realloc
 #define raw_free je_free
 
-static ATOM_SIZET *
+static ATOM_SIZET*
 get_allocated_field(uint32_t handle) {
 	int h = (int)(handle & (SLOT_SIZE - 1));
-	struct mem_data *data = &mem_stats[h];
+	struct mem_data* data = &mem_stats[h];
 	uint32_t old_handle = data->handle;
 	ssize_t old_alloc = (ssize_t)data->allocated;
-	if(old_handle == 0 || old_alloc <= 0) {
+	if (old_handle == 0 || old_alloc <= 0) {
 		// data->allocated may less than zero, because it may not count at start.
-		if(!ATOM_CAS_ULONG(&data->handle, old_handle, handle)) {
+		if (!ATOM_CAS_ULONG(&data->handle, old_handle, handle)) {
 			return 0;
 		}
 		if (old_alloc < 0) {
 			ATOM_CAS_SIZET(&data->allocated, (size_t)old_alloc, 0);
 		}
 	}
-	if(data->handle != handle) {
+	if (data->handle != handle) {
 		return 0;
 	}
 	return &data->allocated;
@@ -69,8 +69,8 @@ inline static void
 update_xmalloc_stat_alloc(uint32_t handle, size_t __n) {
 	ATOM_FADD(&_used_memory, __n);
 	ATOM_FINC(&_memory_block);
-	ATOM_SIZET * allocated = get_allocated_field(handle);
-	if(allocated) {
+	ATOM_SIZET* allocated = get_allocated_field(handle);
+	if (allocated) {
 		ATOM_FADD(allocated, __n);
 	}
 }
@@ -79,8 +79,8 @@ inline static void
 update_xmalloc_stat_free(uint32_t handle, size_t __n) {
 	ATOM_FSUB(&_used_memory, __n);
 	ATOM_FDEC(&_memory_block);
-	ATOM_SIZET * allocated = get_allocated_field(handle);
-	if(allocated) {
+	ATOM_SIZET* allocated = get_allocated_field(handle);
+	if (allocated) {
 		ATOM_FSUB(allocated, __n);
 	}
 }
@@ -89,7 +89,7 @@ inline static void*
 fill_prefix(char* ptr) {
 	uint32_t handle = skynet_current_handle();
 	size_t size = je_malloc_usable_size(ptr);
-	struct mem_cookie *p = (struct mem_cookie *)(ptr + size - sizeof(struct mem_cookie));
+	struct mem_cookie* p = (struct mem_cookie*)(ptr + size - sizeof(struct mem_cookie));
 	memcpy(&p->handle, &handle, sizeof(handle));
 #ifdef MEMORY_CHECK
 	uint32_t dogtag = MEMORY_ALLOCTAG;
@@ -102,7 +102,7 @@ fill_prefix(char* ptr) {
 inline static void*
 clean_prefix(char* ptr) {
 	size_t size = je_malloc_usable_size(ptr);
-	struct mem_cookie *p = (struct mem_cookie *)(ptr + size - sizeof(struct mem_cookie));
+	struct mem_cookie* p = (struct mem_cookie*)(ptr + size - sizeof(struct mem_cookie));
 	uint32_t handle;
 	memcpy(&handle, &p->handle, sizeof(handle));
 #ifdef MEMORY_CHECK
@@ -128,16 +128,17 @@ static void malloc_oom(size_t size) {
 
 void
 memory_info_dump(const char* opts) {
-	je_malloc_stats_print(0,0, opts);
+	je_malloc_stats_print(0, 0, opts);
 }
 
 bool
 mallctl_bool(const char* name, bool* newval) {
 	bool v = 0;
 	size_t len = sizeof(v);
-	if(newval) {
+	if (newval) {
 		je_mallctl(name, &v, &len, newval, sizeof(bool));
-	} else {
+	}
+	else {
 		je_mallctl(name, &v, &len, NULL, 0);
 	}
 	return v;
@@ -152,9 +153,10 @@ size_t
 mallctl_int64(const char* name, size_t* newval) {
 	size_t v = 0;
 	size_t len = sizeof(v);
-	if(newval) {
+	if (newval) {
 		je_mallctl(name, &v, &len, newval, sizeof(size_t));
-	} else {
+	}
+	else {
 		je_mallctl(name, &v, &len, NULL, 0);
 	}
 	// skynet_error(NULL, "name: %s, value: %zd\n", name, v);
@@ -165,14 +167,16 @@ int
 mallctl_opt(const char* name, int* newval) {
 	int v = 0;
 	size_t len = sizeof(v);
-	if(newval) {
+	if (newval) {
 		int ret = je_mallctl(name, &v, &len, newval, sizeof(int));
-		if(ret == 0) {
+		if (ret == 0) {
 			skynet_error(NULL, "set new value(%d) for (%s) succeed\n", *newval, name);
-		} else {
+		}
+		else {
 			skynet_error(NULL, "set new value(%d) for (%s) failed: error -> %d\n", *newval, name, ret);
 		}
-	} else {
+	}
+	else {
 		je_mallctl(name, &v, &len, NULL, 0);
 	}
 
@@ -181,46 +185,53 @@ mallctl_opt(const char* name, int* newval) {
 
 // hook : malloc, realloc, free, calloc
 
-void *
+void*
 skynet_malloc(size_t size) {
 	void* ptr = je_malloc(size + PREFIX_SIZE);
-	if(!ptr) malloc_oom(size);
+	if (!ptr) malloc_oom(size);
 	return fill_prefix(ptr);
 }
 
-void *
-skynet_realloc(void *ptr, size_t size) {
+void*
+skynet_realloc(void* ptr, size_t size) {
 	if (ptr == NULL) return skynet_malloc(size);
 
 	void* rawptr = clean_prefix(ptr);
-	void *newptr = je_realloc(rawptr, size+PREFIX_SIZE);
-	if(!newptr) malloc_oom(size);
+	void* newptr = je_realloc(rawptr, size + PREFIX_SIZE);
+	if (!newptr) malloc_oom(size);
 	return fill_prefix(newptr);
 }
 
 void
-skynet_free(void *ptr) {
+skynet_free(void* ptr) {
 	if (ptr == NULL) return;
 	void* rawptr = clean_prefix(ptr);
 	je_free(rawptr);
 }
 
-void *
-skynet_calloc(size_t nmemb,size_t size) {
-	void* ptr = je_calloc(nmemb + ((PREFIX_SIZE+size-1)/size), size );
-	if(!ptr) malloc_oom(size);
+void*
+skynet_calloc(size_t nmemb, size_t size) {
+	void* ptr = je_calloc(nmemb + ((PREFIX_SIZE + size - 1) / size), size);
+	if (!ptr) malloc_oom(size);
 	return fill_prefix(ptr);
 }
 
-void *
+void*
+skynet_memalign(size_t alignment, size_t size) {
+	void* ptr = je_memalign(alignment, size + PREFIX_SIZE);
+	if (!ptr) malloc_oom(size);
+	return fill_prefix(ptr);
+}
+
+void*
 skynet_aligned_alloc(size_t alignment, size_t size) {
-	void* ptr = je_aligned_alloc(alignment, size + (size_t)((PREFIX_SIZE + alignment -1) & ~(alignment-1)));
-	if(!ptr) malloc_oom(size);
+	void* ptr = je_aligned_alloc(alignment, size + (size_t)((PREFIX_SIZE + alignment - 1) & ~(alignment - 1)));
+	if (!ptr) malloc_oom(size);
 	return fill_prefix(ptr);
 }
 
 int
-skynet_posix_memalign(void **memptr, size_t alignment, size_t size) {
+skynet_posix_memalign(void** memptr, size_t alignment, size_t size) {
 	int err = je_posix_memalign(memptr, alignment, size + PREFIX_SIZE);
 	if (err) malloc_oom(size);
 	fill_prefix(*memptr);
@@ -232,37 +243,6 @@ skynet_posix_memalign(void **memptr, size_t alignment, size_t size) {
 // for skynet_lalloc use
 #define raw_realloc realloc
 #define raw_free free
-
-void * 
-skynet_malloc(size_t sz) {
-	return malloc(sz);
-}
-
-void * 
-skynet_calloc(size_t nmemb,size_t size) {
-	return calloc(nmemb, size);
-}
-
-void * 
-skynet_realloc(void *ptr, size_t size) {
-	return realloc(ptr, size);
-}
-
-void skynet_free(void *ptr) {
-	free(ptr);
-}
-
-#ifndef _MSC_VER
-	void * 
-	skynet_aligned_alloc(size_t alignment, size_t size) {
-		return aligned_alloc(alignment, size);
-	}
-
-	int 
-	skynet_posix_memalign(void **memptr, size_t alignment, size_t size) {
-		return posix_memalign(memptr, alignment, size);
-	}
-#endif
 
 void
 memory_info_dump(const char* opts) {
@@ -310,41 +290,42 @@ dump_c_mem() {
 	int i;
 	size_t total = 0;
 	skynet_error(NULL, "dump all service mem:");
-	for(i=0; i<SLOT_SIZE; i++) {
+	for (i = 0; i < SLOT_SIZE; i++) {
 		struct mem_data* data = &mem_stats[i];
-		if(data->handle != 0 && data->allocated != 0) {
+		if (data->handle != 0 && data->allocated != 0) {
 			total += data->allocated;
 			skynet_error(NULL, ":%08x -> %zdkb %db", data->handle, data->allocated >> 10, (int)(data->allocated % 1024));
 		}
 	}
-	skynet_error(NULL, "+total: %zdkb",total >> 10);
+	skynet_error(NULL, "+total: %zdkb", total >> 10);
 }
 
-char *
-skynet_strdup(const char *str) {
+char*
+skynet_strdup(const char* str) {
 	size_t sz = strlen(str);
-	char * ret = skynet_malloc(sz+1);
-	memcpy(ret, str, sz+1);
+	char* ret = skynet_malloc(sz + 1);
+	memcpy(ret, str, sz + 1);
 	return ret;
 }
 
-void *
-skynet_lalloc(void *ptr, size_t osize, size_t nsize) {
+void*
+skynet_lalloc(void* ptr, size_t osize, size_t nsize) {
 	if (nsize == 0) {
 		raw_free(ptr);
 		return NULL;
-	} else {
+	}
+	else {
 		return raw_realloc(ptr, nsize);
 	}
 }
 
 int
-dump_mem_lua(lua_State *L) {
+dump_mem_lua(lua_State* L) {
 	int i;
 	lua_newtable(L);
-	for(i=0; i<SLOT_SIZE; i++) {
+	for (i = 0; i < SLOT_SIZE; i++) {
 		struct mem_data* data = &mem_stats[i];
-		if(data->handle != 0 && data->allocated != 0) {
+		if (data->handle != 0 && data->allocated != 0) {
 			lua_pushinteger(L, data->allocated);
 			lua_rawseti(L, -2, (lua_Integer)data->handle);
 		}
@@ -356,19 +337,19 @@ size_t
 malloc_current_memory(void) {
 	uint32_t handle = skynet_current_handle();
 	int i;
-	for(i=0; i<SLOT_SIZE; i++) {
+	for (i = 0; i < SLOT_SIZE; i++) {
 		struct mem_data* data = &mem_stats[i];
-		if(data->handle == (uint32_t)handle && data->allocated != 0) {
-			return (size_t) data->allocated;
+		if (data->handle == (uint32_t)handle && data->allocated != 0) {
+			return (size_t)data->allocated;
 		}
 	}
 	return 0;
 }
 
 void
-skynet_debug_memory(const char *info) {
+skynet_debug_memory(const char* info) {
 	// for debug use
 	uint32_t handle = skynet_current_handle();
 	size_t mem = malloc_current_memory();
-	fprintf(stderr, "[:%08x] %s %p\n", handle, info, (void *)mem);
+	fprintf(stderr, "[:%08x] %s %p\n", handle, info, (void*)mem);
 }
