@@ -7,16 +7,17 @@ include_directories(3rd/lua 3rd/posix skynet-src)
 
 # 添加编译选项
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_SOURCE_FILE_EXTENSIONS c h)
-set(CMAKE_C_COMPILER "clang-cl")
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+set(CMAKE_CXX_STANDARD 17)
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     message(STATUS "current platform: Linux")
     add_compile_definitions(NOUSE_JEMALLOC LUA_USE_LINUX LUA_USE_READLINE)
 elseif (CMAKE_SYSTEM_NAME MATCHES "Windows")
     message(STATUS "current platform: Windows")
-    add_compile_definitions(NOUSE_JEMALLOC LUA_BUILD_AS_DLL)
+    # set(CMAKE_C_SOURCE_FILE_EXTENSIONS c h)
+    # set(CMAKE_C_COMPILER "clang-cl")
+    add_compile_definitions(NOUSE_JEMALLOC LUA_BUILD_AS_DLL  _CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     message(STATUS "current platform: Mac OS X")
     add_compile_definitions(NOUSE_JEMALLOC LUA_USE_MACOSX LUA_USE_READLINE)
@@ -77,11 +78,17 @@ add_library(md5 SHARED ${LUA_MD5_SRC})
 target_link_libraries(md5 liblua)
 
 # 生成动态库 client.so
-# add_library(client SHARED lualib-src/lua-clientsocket.c lualib-src/lua-crypt.c lualib-src/lsha1.c)
-# set_target_properties(client PROPERTIES PREFIX "")
+set(LUA_CLIENT_SOCKET_SRC
+    lualib-src/lua-crypt.c
+    lualib-src/lsha1.c
+    lualib-src/lua-clientsocket.c
+)
+add_library(client SHARED ${LUA_CLIENT_SOCKET_SRC})
+target_link_libraries(client ws2_32 liblua libposix)
 
 # 生成动态库 sproto.so
-add_library(sproto SHARED lualib-src/sproto/sproto.c lualib-src/sproto/lsproto.c)
+aux_source_directory(lualib-src/sproto LUA_SPROTO_SRC)
+add_library(sproto SHARED ${LUA_SPROTO_SRC})
 target_link_libraries(sproto liblua)
 
 # 生成动态库 lpeg.so
@@ -100,10 +107,15 @@ add_library(pb SHARED ${PB_SRC})
 target_link_libraries(pb liblua)
 
 #生成动态库 cjson.so
-add_library(cjson SHARED 3rd/lua-cjson/lua_cjson.c 3rd/lua-cjson/fpconv.c 3rd/lua-cjson/strbuf.c)
+set(LUA_CJSON_SRC
+    3rd/lua-cjson/lua_cjson.c
+    3rd/lua-cjson/fpconv.c
+    3rd/lua-cjson/strbuf.c
+)
+add_library(cjson SHARED ${LUA_CJSON_SRC})
 target_link_libraries(cjson liblua)
 
-set_target_properties(lpeg sproto md5 bson skynetso lfs pb cjson PROPERTIES
+set_target_properties(client skynetso lpeg sproto md5 bson lfs pb cjson PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/luaclib
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/luaclib
     PREFIX ""
