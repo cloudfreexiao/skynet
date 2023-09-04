@@ -73,6 +73,7 @@ target_end()
 ----------------------------------------------------------------------------------------------
 -- skynet
 
+set_languages("c11", "c++17")
 add_includedirs("3rd/lua")
 add_includedirs("skynet-src")
 set_symbols("debug")						-- -g
@@ -179,7 +180,7 @@ rule("lualib_flags")
 		if is_plat("macosx") then
 			target:add("shflags", "-dynamiclib", "-undefined dynamic_lookup")
 		end
-		target:add("includedirs", "service-src", "lualib-src")
+		target:add("includedirs", "lualib-src")
 		target:set("targetdir", "luaclib")
 	end)
 rule_end()
@@ -204,7 +205,8 @@ target("skynet_so")
 		"lualib-src/lua-debugchannel.c",
 		"lualib-src/lua-datasheet.c",
 		"lualib-src/lua-sharetable.c",
-		"lualib-src/lua-vscdebugaux.c")
+		"lualib-src/lua-vscdebugaux.c",
+		"lualib-src/lua-clonefunc.c")
 target_end()
 
 target("bson")
@@ -257,13 +259,13 @@ target("tlsmodule")
 	add_files("lualib-src/ltls.c")
 target_end()
 
--- target("ltls")
--- 	set_kind("phony")
--- 	add_options("opt_tls")
--- 	if has_config("opt_tls") then
--- 		add_deps("tlsmodule")
--- 	end
--- target_end()
+target("ltls")
+	set_kind("phony")
+	add_options("opt_tls")
+	if has_config("opt_tls") then
+		add_deps("tlsmodule")
+	end
+target_end()
 ------------------------------
 
 target("lpeg")

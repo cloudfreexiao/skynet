@@ -260,7 +260,7 @@ local function hotfix_(root, proto_map, short_source)
                         -- print("1. hotfix", name)
                         update_func(upvalues, newf)
                         res[v] = newf
-                        -- else
+                    else
                         -- print("hotfix skip: hotfix not found proto", name, v)
                     end
                 elseif tp == "table" and name ~= "_ENV" then
@@ -307,10 +307,10 @@ function hotfix.update(name, updatename)
             -- first time reload
             return false, table.concat(err, "\n")
         end
-        local _, herr = hotfix.diff(origin[name], loader)
-        if herr then
+        local _, err = hotfix.diff(origin[name], loader)
+        if err then
             -- add upvalue not exist in origin version
-            return false, table.concat(herr, "\n")
+            return false, table.concat(err, "\n")
         end
     end
 
