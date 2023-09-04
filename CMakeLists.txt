@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(skynet)
 
 # 把lua头文件添加到全局搜索路径
-include_directories(3rd/lua 3rd/posix skynet-src)
+include_directories(3rd/lua 3rd/posix 3rd/luakit skynet-src)
 
 # 添加编译选项
 set(CMAKE_C_STANDARD 11)
@@ -116,7 +116,24 @@ set(LUA_CJSON_SRC
 add_library(cjson SHARED ${LUA_CJSON_SRC})
 target_link_libraries(cjson liblua)
 
-set_target_properties(client skynetso lpeg sproto md5 bson lfs pb cjson PROPERTIES
+#生成动态库 laoi.so
+set(LUA_AOI_SRC
+    3rd/laoi/laoi.cpp
+)
+add_library(laoi SHARED ${LUA_AOI_SRC})
+target_link_libraries(laoi liblua)
+
+#生成动态库 ldetour.so
+set(LUA_DETOUR_SRC
+    3rd/ldetor/detour.cpp
+    3rd/ldetor/ldetor.cpp
+)
+aux_source_directory(3rd/ldetor/detour DETOUR_SRC)
+add_library(ldetour SHARED ${DETOUR_SRC} ${LUA_DETOUR_SRC})
+target_include_directories(ldetour PRIVATE 3rd/ldetor 3rd/ldetor/detour)
+target_link_libraries(ldetour liblua)
+
+set_target_properties(client skynetso lpeg sproto md5 bson lfs pb cjson laoi ldetour PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/luaclib
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/luaclib
     PREFIX ""

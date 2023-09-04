@@ -76,6 +76,7 @@ target_end()
 set_languages("c11", "c++17")
 add_includedirs("3rd/lua")
 add_includedirs("skynet-src")
+add_includedirs("3rd/luakit")
 set_symbols("debug")						-- -g
 set_optimize("faster")						-- -O2
 set_warnings("all")							-- -Wall
@@ -305,4 +306,23 @@ target("pb")
 	add_rules("lualib_flags")
 	add_includedirs("3rd/lua-protobuf")
 	add_files("3rd/lua-protobuf/pb.c")
+target_end()
+
+target("laoi")
+	set_kind("shared")
+	set_filename("laoi.so")
+	add_rules("lualib_flags")
+	add_includedirs("3rd/laoi")
+	add_files("3rd/laoi/laoi.cpp")
+target_end()
+
+target("ldetour")
+	set_kind("shared")
+	set_filename("ldetour.so")
+	add_rules("lualib_flags")
+	add_includedirs("3rd/ldetor",
+	"3rd/ldetor/detour")
+	add_files("3rd/ldetor/detour/**.cpp",
+	"3rd/ldetor/detour.cpp",
+	"3rd/ldetor/ldetor.cpp")
 target_end()
