@@ -52,8 +52,14 @@ target("jemalloc")
 		if not os.exists("autogen.sh") then
 			os.exec("git submodule update --init")
 		end
+	
 		if not os.exists("Makefile") then
-			os.exec("./autogen.sh --with-jemalloc-prefix=je_ --enable-prof")
+			-- https://www.cnblogs.com/Lifehacker/p/jemalloc_settings.html
+			local je = "./autogen.sh " ..
+						" --with-jemalloc-prefix=je_ " ..
+						" --enable-prof " ..
+						" --with-malloc-conf='background_thread:true,dirty_decay_ms:0,muzzy_decay_ms:0' "
+			os.exec(je)
 		end
 		if not os.exists("lib/libjemalloc_pic.a") then
 			os.exec("make")
@@ -107,6 +113,7 @@ target("skynet")
 	add_options("opt_jemalloc")
 	if has_config("opt_jemalloc") then
 		add_deps("jemalloc")
+		add_defines("MEMORY_CHECK")
 	else
 		add_defines("NOUSE_JEMALLOC")
 	end

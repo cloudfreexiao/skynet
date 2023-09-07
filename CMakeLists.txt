@@ -40,6 +40,10 @@ target_link_libraries(libposix ws2_32)
 add_library(libskynet SHARED ${LIB_SKYNET_SRC})
 target_link_libraries(libskynet liblua libposix)
 
+# 编译 lua 可执行文件
+add_executable(lua ${LUA_LIB_SRC} 3rd/lua/lua.c)
+# 编译 luac 可执行文件
+add_executable(luac ${LUA_LIB_SRC} 3rd/lua/luac.c)
 # 编译 skynet 可执行文件
 add_executable(skynet skynet-src/skynet_main.c)
 target_link_libraries(skynet ws2_32 liblua libposix libskynet)
