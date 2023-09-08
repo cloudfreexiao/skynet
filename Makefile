@@ -55,7 +55,8 @@ LUA_CLIB = skynet \
   bson md5 sproto lpeg cjson pb lfs $(TLS_MODULE)
 
 LUA_CLIB_SKYNET = \
-  lua-skynet.c lua-seri.c \
+  lua-skynet.c \
+  lua-seri.c \
   lua-socket.c \
   lua-mongo.c \
   lua-netpack.c \
@@ -70,6 +71,7 @@ LUA_CLIB_SKYNET = \
   lua-sharetable.c \
   lua-vscdebugaux.c \
   lua-clonefunc.c \
+  lua-fmt.c \
   \
 
 SKYNET_SRC = skynet_main.c skynet_handle.c skynet_module.c skynet_mq.c \
