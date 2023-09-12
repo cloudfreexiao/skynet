@@ -9,7 +9,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <unistd.h>
 
 #define BACKLOG 128
 
@@ -89,19 +88,13 @@ _forward_agent(struct gate * g, int fd, uint32_t agentaddr, uint32_t clientaddr)
 static void
 _ctrl(struct gate * g, const void * msg, int sz) {
 	struct skynet_context * ctx = g->ctx;
-#ifdef _MSC_VER
-	char* tmp = (char*)skynet_malloc(sz+1);
-#else
 	char tmp[sz+1];
-#endif
 	memcpy(tmp, msg, sz);
 	tmp[sz] = '\0';
 	char * command = tmp;
 	int i;
-	if (sz == 0){
-		goto _my_exit;
-	}
-
+	if (sz == 0)
+		return;
 	for (i=0;i<sz;i++) {
 		if (command[i]==' ') {
 			break;
@@ -114,29 +107,29 @@ _ctrl(struct gate * g, const void * msg, int sz) {
 		if (id>=0) {
 			skynet_socket_close(ctx, uid);
 		}
-		goto _my_exit;
+		return;
 	}
 	if (memcmp(command,"forward",i)==0) {
 		_parm(tmp, sz, i);
 		char * client = tmp;
 		char * idstr = strsep(&client, " ");
 		if (client == NULL) {
-			goto _my_exit;
+			return;
 		}
 		int id = strtol(idstr , NULL, 10);
 		char * agent = strsep(&client, " ");
 		if (client == NULL) {
-			goto _my_exit;
+			return;
 		}
 		uint32_t agent_handle = strtoul(agent+1, NULL, 16);
 		uint32_t client_handle = strtoul(client+1, NULL, 16);
 		_forward_agent(g, id, agent_handle, client_handle);
-		goto _my_exit;
+		return;
 	}
 	if (memcmp(command,"broker",i)==0) {
 		_parm(tmp, sz, i);
 		g->broker = skynet_queryname(ctx, command);
-		goto _my_exit;
+		return;
 	}
 	if (memcmp(command,"start",i) == 0) {
 		_parm(tmp, sz, i);
@@ -145,21 +138,16 @@ _ctrl(struct gate * g, const void * msg, int sz) {
 		if (id>=0) {
 			skynet_socket_start(ctx, uid);
 		}
-		goto _my_exit;
+		return;
 	}
 	if (memcmp(command, "close", i) == 0) {
 		if (g->listen_id >= 0) {
 			skynet_socket_close(ctx, g->listen_id);
 			g->listen_id = -1;
 		}
-		goto _my_exit;
+		return;
 	}
-
-	_my_exit:
-		skynet_error(ctx, "[gate] Unkown command : %s", command);
-		#ifdef _MSC_VER
-			skynet_free(tmp);
-		#endif
+	skynet_error(ctx, "[gate] Unkown command : %s", command);
 }
 
 static void
@@ -301,7 +289,7 @@ _cb(struct skynet_context * ctx, void * ud, int type, int session, uint32_t sour
 			break;
 		}
 		// The last 4 bytes in msg are the id of socket, write following bytes to it
-		const uint8_t * idbuf = (uint8_t*)msg + sz - 4;
+		const uint8_t * idbuf = msg + sz - 4;
 		uint32_t uid = idbuf[0] | idbuf[1] << 8 | idbuf[2] << 16 | idbuf[3] << 24;
 		int id = hashid_lookup(&g->hash, uid);
 		if (id>=0) {
@@ -355,35 +343,24 @@ int
 gate_init(struct gate *g , struct skynet_context * ctx, char * parm) {
 	if (parm == NULL)
 		return 1;
-
 	int max = 0;
 	int sz = strlen(parm)+1;
-#ifdef _MSC_VER
-	char* watchdog = (char*) skynet_malloc(sz);
-	char* binding = (char*)skynet_malloc(sz);
-#else
 	char watchdog[sz];
 	char binding[sz];
-#endif
-
-	int l = 0;
 	int client_tag = 0;
 	char header;
 	int n = sscanf(parm, "%c %s %s %d %d", &header, watchdog, binding, &client_tag, &max);
 	if (n<4) {
 		skynet_error(ctx, "Invalid gate parm %s",parm);
-		l = 1;
-		goto _my_exit;
+		return 1;
 	}
 	if (max <=0 ) {
 		skynet_error(ctx, "Need max connection");
-		l = 1;
-		goto _my_exit;
+		return 1;
 	}
 	if (header != 'S' && header !='L') {
 		skynet_error(ctx, "Invalid data header style");
-		l = 1;
-		goto _my_exit;
+		return 1;
 	}
 
 	if (client_tag == 0) {
@@ -395,8 +372,7 @@ gate_init(struct gate *g , struct skynet_context * ctx, char * parm) {
 		g->watchdog = skynet_queryname(ctx, watchdog);
 		if (g->watchdog == 0) {
 			skynet_error(ctx, "Invalid watchdog %s",watchdog);
-			l = 1;
-			goto _my_exit;
+			return 1;
 		}
 	}
 
@@ -416,12 +392,5 @@ gate_init(struct gate *g , struct skynet_context * ctx, char * parm) {
 
 	skynet_callback(ctx,g,_cb);
 
-	l = start_listen(g, binding);
-
-	_my_exit:
-		#ifdef _MSC_VER
-			skynet_free(watchdog);
-			skynet_free(binding);
-		#endif
-	return l;
+	return start_listen(g,binding);
 }
