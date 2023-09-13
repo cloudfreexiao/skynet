@@ -167,7 +167,10 @@ local function try_handle(self, method, ...)
     local handle = self.handle
     local f = handle and handle[method]
     if f then
-        f(self.id, ...)
+        local ok, err = xpcall(f, debug.traceback, self.id, ...)
+        if not ok then
+            skynet.error(string.format("websocket try_handle err:%s", err))
+        end
     end
 end
 
