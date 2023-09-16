@@ -70,7 +70,6 @@ LUA_CLIB_SKYNET = \
   lua-datasheet.c \
   lua-sharetable.c \
   lua-vscdebugaux.c \
-  lua-clonefunc.c \
   lua-fmt.c \
   \
 

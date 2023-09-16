@@ -213,7 +213,6 @@ target("skynet_so")
 		"lualib-src/lua-datasheet.c",
 		"lualib-src/lua-sharetable.c",
 		"lualib-src/lua-vscdebugaux.c",
-		"lualib-src/lua-clonefunc.c",
 		"lualib-src/lua-fmt.c")
 target_end()
 

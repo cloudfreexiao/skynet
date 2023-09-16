@@ -66,7 +66,6 @@ set(LUA_CLIB_SKYNET_SRC
     lualib-src/lua-datasheet.c
     lualib-src/lua-sharetable.c
     lualib-src/lua-vscdebugaux.c
-    lualib-src/lua-clonefunc.c
     lualib-src/lua-fmt.c
 )
 message(STATUS "The value of LIB_SKYNET_SRC is: ${LIB_SKYNET_SRC}")
