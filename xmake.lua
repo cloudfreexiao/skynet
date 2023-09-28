@@ -258,10 +258,15 @@ target("tlsmodule")
 	set_kind("shared")
 	set_filename("ltls.so")
 	add_rules("lualib_flags")
+
 	if is_plat("macosx") then
 		add_includedirs("/usr/local/opt/openssl/include")
 		add_linkdirs("/usr/local/opt/openssl/lib")
+	else
+		add_includedirs("/usr/include/")
+		add_linkdirs("/usr/lib/")
 	end
+
 	add_syslinks("ssl")
 	add_files("lualib-src/ltls.c")
 target_end()
