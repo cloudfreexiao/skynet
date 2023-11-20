@@ -115,7 +115,7 @@ function httpc.request(method, hostname, url, recvheader, header, content)
 	if ok then
 		return statuscode, body
 	else
-		error(statuscode)
+		error(body or statuscode)
 	end
 end
 
