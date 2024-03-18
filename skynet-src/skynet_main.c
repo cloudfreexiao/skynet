@@ -154,6 +154,7 @@ main(int argc, char* argv[]) {
 		return 1;
 	}
 	_init_env(L);
+	lua_close(L);
 
 	config.thread = optint("thread", 8);
 	config.exlusive = optint("exlusive", 0);
@@ -164,8 +165,6 @@ main(int argc, char* argv[]) {
 	config.logger = optstring("logger", NULL);
 	config.logservice = optstring("logservice", "logger");
 	config.profile = optboolean("profile", 1);
-
-	lua_close(L);
 
 	skynet_start(&config);
 	skynet_globalexit();
