@@ -11,7 +11,6 @@ local pairs = pairs
 
 local httpc = {}
 
-
 local async_dns
 
 function httpc.dns(server,port)
@@ -19,13 +18,38 @@ function httpc.dns(server,port)
 	dns.server(server,port)
 end
 
+local default_port = {
+	http = 80,
+	https = 443,
+}
+
+local function hostname_port(host)
+	if host:find ".*:.*:" then
+		-- If host contains 2 or more ":", it's ipv6 address
+		local ipv6, port = host:match "^%[(.-)%]:(%d+)$"
+		if ipv6 then
+			return ipv6, port
+		else
+			return host
+		end
+	end
+	local hostname, port = host:match "(.-):(%d+)$"
+	if hostname then
+		return hostname, port
+	end
+	return host
+end
+
 local function check_protocol(host)
 	local protocol, hostname = host:match "^(%a+)://(.*)"
 	if protocol then
-		return string.lower(protocol), hostname
+		protocol = string.lower(protocol)
 	else
-		return "http", host
+		protocol = "http"
+		hostname = host
 	end
+	hostname, port = hostname_port(hostname)
+	return protocol, hostname, port or default_port[protocol] or error("Invalid protocol: " .. protocol)
 end
 
 local SSLCTX_CLIENT = nil
@@ -56,40 +80,25 @@ local function gen_interface(protocol, fd, hostname)
 	end
 end
 
-local default_port = {
-	http = 80,
-	https = 443,
-}
-
 local function connect(host, timeout)
-	local protocol, port
-	protocol, host = check_protocol(host)
-	if not host:find ":%d+$" then
-		port = default_port[protocol] or error("Invalid protocol: " .. protocol)
-	end
-	if async_dns then
-		local hostname
-		if port then -- without :%d+$
-			-- if ipv6, contains colons
-			-- if ipv4, end with a digit
-			if host:find "^[^:]-[^%d]$" then
-				hostname = host
+	local protocol, host, port = check_protocol(host)
+	local hostaddr = host
+	local hostname
+	if host:find "^[^:]-%D$" then
+		-- it's a hostname (not ip address), because
+		--   ipv6 contains colons
+		--   ipv4 end with a digit
+		hostname = host
+		if async_dns then
+			local msg
+			hostaddr, msg = dns.resolve(host)
+			if not hostaddr then
+				error(string.format("%s dns resolve failed msg:%s", host, msg))
 			end
-		else -- with :%d+$ (port)
-			-- hostname string (ends with ":%d+") must begin with a substring that doesn't contain colon "[^:]"
-			-- and end with a character that is not a colon or a digit "[^%d%]]".
-			hostname, port = host:match "^([^:]-[^%d%]]):(%d+)$"
 		end
-        if hostname then
-            local msg
-            host, msg = dns.resolve(hostname)
-            if not host then
-                error(string.format("%s dns resolve failed msg:%s", hostname, msg))
-            end
-        end
 	end
 
-	local fd = socket.connect(host, port, timeout)
+	local fd = socket.connect(hostaddr, port, timeout)
 	if not fd then
 		error(string.format("%s connect error host:%s, port:%s, timeout:%s", protocol, host, port, timeout))
 	end
