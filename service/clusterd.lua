@@ -58,7 +58,7 @@ local function open_channel(t, key)
 			ct.channel = c
                         node_sender_closed[key] = nil
 		else
-			err = string.format("changenode [%s] (%s:%s) failed", key, address)
+			err = string.format("changenode [%s] (%s) failed", key, address)
 		end
 	elseif address == false then
 		c = node_sender[key]
