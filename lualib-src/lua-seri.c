@@ -206,6 +206,7 @@ wb_string(struct write_block *wb, const char *str, int len) {
 			n = COMBINE_TYPE(TYPE_LONG_STRING, 4);
 			wb_push(wb, &n, 1);
 			uint32_t x = (uint32_t) len;
+			assert(x == len);
 			wb_push(wb, &x, 4);
 		}
 		wb_push(wb, str, len);
@@ -543,14 +544,18 @@ unpack_one(lua_State *L, struct read_block *rb) {
 
 static void
 seri(lua_State *L, struct block *b, int len) {
+	if (len < 0)
+		luaL_error(L, "seri too large");
 	uint8_t * buffer = skynet_malloc(len);
 	uint8_t * ptr = buffer;
 	int sz = len;
 	while(len>0) {
 		if (len >= BLOCK_SIZE) {
+			len -= BLOCK_SIZE;
+			if (len < 0)
+				luaL_error(L, "seri too large");
 			memcpy(ptr, b->buffer, BLOCK_SIZE);
 			ptr += BLOCK_SIZE;
-			len -= BLOCK_SIZE;
 			b = b->next;
 		} else {
 			memcpy(ptr, b->buffer, len);
