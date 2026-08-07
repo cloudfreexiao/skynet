@@ -319,8 +319,8 @@ skynet_handle_init(int harbor, int thread) {
 
 	rwlock_init(&s->lock);
 
-	// Distributed reader slots: workers + monitor + timer + socket
-	s->rslot_count = thread + 3;
+	// Distributed reader slots: workers + monitor + timer + socket + controller
+	s->rslot_count = thread + 4;
 	size_t rslot_sz = (size_t)s->rslot_count * sizeof(struct handle_reader_slot);
 	s->rslots = (struct handle_reader_slot *)skynet_malloc(rslot_sz);
 	memset(s->rslots, 0, rslot_sz);

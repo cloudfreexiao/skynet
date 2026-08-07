@@ -5,6 +5,7 @@
 #include "skynet_handle.h"
 #include "skynet_module.h"
 #include "skynet_timer.h"
+#include "skynet_worker_control.h"
 #include "skynet_monitor.h"
 #include "skynet_socket.h"
 #include "skynet_daemon.h"
@@ -58,6 +59,14 @@ wakeup(struct monitor *m, int busy) {
 		// signal sleep worker, "spurious wakeup" is harmless
 		pthread_cond_signal(&m->cond);
 	}
+}
+
+static void
+wakeup_all_workers(void *ud) {
+	struct monitor *m = ud;
+	pthread_mutex_lock(&m->mutex);
+	pthread_cond_broadcast(&m->cond);
+	pthread_mutex_unlock(&m->mutex);
 }
 
 static void *
@@ -135,7 +144,10 @@ thread_timer(void *p) {
 	for (;;) {
 		skynet_updatetime();
 		skynet_socket_updatetime();
-		CHECK_ABORT
+		if (skynet_context_total() == 0) {
+			skynet_worker_control_request_shutdown();
+			break;
+		}
 		wakeup(m,m->count-1);
 		usleep(2500);
 		if (SIG) {
@@ -154,6 +166,15 @@ thread_timer(void *p) {
 }
 
 static void *
+thread_worker_control(void *p) {
+	(void)p;
+	skynet_initthread(THREAD_WORKER_CONTROL);
+	skynet_handle_register_thread();
+	skynet_worker_control_run();
+	return NULL;
+}
+
+static void *
 thread_worker(void *p) {
 	struct worker_parm *wp = p;
 	int id = wp->id;
@@ -162,11 +183,18 @@ thread_worker(void *p) {
 	struct skynet_monitor *sm = m->m[id];
 	skynet_initthread(THREAD_WORKER);
 	skynet_handle_register_thread();
+	skynet_worker_control_register_worker();
 	struct message_queue * q = NULL;
 	while (!m->quit) {
 		q = skynet_context_message_dispatch(sm, q, weight);
+		skynet_worker_control_checkpoint();
 		if (q == NULL) {
 			if (pthread_mutex_lock(&m->mutex) == 0) {
+				if (skynet_worker_control_stop_requested()) {
+					pthread_mutex_unlock(&m->mutex);
+					skynet_worker_control_checkpoint();
+					continue;
+				}
 				++ m->sleep;
 				// "spurious wakeup" is harmless,
 				// because skynet_context_message_dispatch() can be call at any time.
@@ -185,7 +213,7 @@ thread_worker(void *p) {
 
 static void
 start(int thread) {
-	pthread_t pid[thread+3];
+	pthread_t pid[thread+4];
 
 	struct monitor *m = skynet_malloc(sizeof(*m));
 	memset(m, 0, sizeof(*m));
@@ -205,10 +233,12 @@ start(int thread) {
 		fprintf(stderr, "Init cond error");
 		exit(1);
 	}
+	skynet_worker_control_init(thread, wakeup_all_workers, m);
 
 	create_thread(&pid[0], thread_monitor, m);
 	create_thread(&pid[1], thread_timer, m);
 	create_thread(&pid[2], thread_socket, m);
+	create_thread(&pid[3], thread_worker_control, NULL);
 
 	static int weight[] = {
 		-1, -1, -1, -1, 0, 0, 0, 0,
@@ -224,13 +254,14 @@ start(int thread) {
 		} else {
 			wp[i].weight = 0;
 		}
-		create_thread(&pid[i+3], thread_worker, &wp[i]);
+		create_thread(&pid[i+4], thread_worker, &wp[i]);
 	}
 
-	for (i=0;i<thread+3;i++) {
+	for (i=0;i<thread+4;i++) {
 		pthread_join(pid[i], NULL);
 	}
 
+	skynet_worker_control_destroy();
 	free_monitor(m);
 }
 
