@@ -25,6 +25,7 @@ local function coroutine_resume(co, ...)
 end
 local coroutine_yield = coroutine.yield
 local coroutine_create = coroutine.create
+local isyieldable = coroutine.isyieldable
 
 local proto = {}
 local skynet = {
@@ -503,6 +504,7 @@ function skynet.timeout(ti, func)
 end
 
 local function suspend_sleep(session, token)
+	if not isyieldable() then error "Can't yieldable" end
 	local tag = session_coroutine_tracetag[running_thread]
 	if tag then c.trace(tag, "sleep", 2) end
 	session_id_coroutine[session] = running_thread
@@ -712,6 +714,7 @@ skynet.tostring = assert(c.tostring)
 skynet.trash = assert(c.trash)
 
 local function yield_call(service, session)
+	if not isyieldable() then error "Can't yieldable" end
 	watching_session[session] = service
 	session_id_coroutine[session] = running_thread
 	local succ, msg, sz = coroutine_yield "SUSPEND"
