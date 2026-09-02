@@ -8,6 +8,10 @@ local assert = assert
 
 --[[
 
+WARNING :
+	Only 64 bits (too short) key here is used for the Diffie-Hellman exchange,
+	So it's insecure (At least 2048 bits recommended). DON'T use it directly in any serious project.
+
 Protocol:
 
 	line (\n) based text protocol
