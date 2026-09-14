@@ -1,18 +1,35 @@
 local skynet = require "skynet"
 local service = require "skynet.service"
 local core = require "skynet.sharetable.core"
-local is_sharedtable = core.is_sharedtable
-local stackvalues = core.stackvalues
 
 local function sharetable_service()
 	local skynet = require "skynet"
 	local core = require "skynet.sharetable.core"
+	local Queue = require "skynet.queue"
+
+	local TABLE_SOURCE = [[
+		local unpack, ptr, len = ...
+		return unpack(ptr, len)
+	]]
 
 	local matrix = {}	-- all the matrix
 	local files = {}	-- filename : matrix
 	local clients = {}
+	local mutation_queue = Queue()
+	local pending = {}
 
 	local sharetable = {}
+
+	skynet.register_protocol {
+		name = "sharetable_completion",
+		id = skynet.PTYPE_SYSTEM,
+		unpack = core.unpack_completion,
+		dispatch = function(_, _, plan, committed)
+			local result = assert(pending[plan])
+			result.committed = committed
+			skynet.wakeup(plan)
+		end,
+	}
 
 	local function close_matrix(m)
 		if m == nil then
@@ -26,34 +43,111 @@ local function sharetable_service()
 		end
 	end
 
-	function sharetable.loadfile(source, filename, ...)
+	local function loadfile(filename, ...)
 		close_matrix(files[filename])
 		local m = core.matrix("@" .. filename, ...)
 		files[filename] = m
+	end
+
+	function sharetable.loadfile(_, filename, ...)
+		mutation_queue(loadfile, filename, ...)
 		skynet.ret()
 	end
 
-	function sharetable.loadstring(source, filename, datasource, ...)
+	local function loadstring(filename, datasource, ...)
 		close_matrix(files[filename])
 		local m = core.matrix(datasource, ...)
 		files[filename] = m
+	end
+
+	function sharetable.loadstring(_, filename, datasource, ...)
+		mutation_queue(loadstring, filename, datasource, ...)
 		skynet.ret()
 	end
 
 	local function loadtable(filename, ptr, len)
 		close_matrix(files[filename])
-		local m = core.matrix([[
-			local unpack, ptr, len = ...
-			return unpack(ptr, len)
-		]], skynet.unpack, ptr, len)
+		local m = core.matrix(TABLE_SOURCE, skynet.unpack, ptr, len)
 		files[filename] = m
 	end
 
-	function sharetable.loadtable(source, filename, ptr, len)
-		local ok, err = pcall(loadtable, filename, ptr, len)
+	function sharetable.loadtable(_, filename, ptr, len)
+		local ok, err = pcall(mutation_queue, loadtable, filename, ptr, len)
 		skynet.trash(ptr, len)
 		assert(ok, err)
 		skynet.ret()
+	end
+
+	local function commit_merge(plan, changed)
+		if not changed then
+			core.finalize_merge(plan)
+			return true
+		end
+
+		local result = {}
+		pending[plan] = result
+		local submitted, err = core.submit_merge(plan, skynet.self())
+		if not submitted then
+			pending[plan] = nil
+			core.finalize_merge(plan)
+			return false, err
+		end
+		skynet.wait(plan)
+		pending[plan] = nil
+		core.finalize_merge(plan)
+		if result.committed then
+			return true
+		end
+		return false, "ShareTable update timed out waiting for workers"
+	end
+
+	local function merge(values)
+		local plan
+		local function prepare_batch()
+			local changed = false
+			for i = 1, #values, 3 do
+				local filename = values[i]
+				local m = files[filename]
+				if not m then
+					error(string.format("ShareTable is not loaded: %s", filename), 0)
+				end
+				local result = table.pack(pcall(
+					m.prepare_merge, m, values[i + 1], values[i + 2], plan))
+				if not result[1] then
+					error(string.format("ShareTable merge failed: %s: %s",
+						filename, result[2]), 0)
+				end
+				plan, changed = table.unpack(result, 2, result.n)
+			end
+			return changed
+		end
+
+		local ok, changed = xpcall(prepare_batch, debug.traceback)
+		for i = 1, #values, 3 do
+			skynet.trash(values[i + 1], values[i + 2])
+		end
+		if not ok then
+			if plan then
+				core.finalize_merge(plan)
+			end
+			return false, changed
+		end
+		if not plan then
+			return true
+		end
+		return commit_merge(plan, changed)
+	end
+
+	local function run_merge(func, ...)
+		local ok, success, err = xpcall(func, debug.traceback, ...)
+		if not ok then
+			return false, success
+		end
+		return success, err
+	end
+
+	function sharetable.merge(_, values)
+		skynet.retpack(mutation_queue(run_merge, merge, values))
 	end
 
 	local function query_file(source, filename)
@@ -94,11 +188,11 @@ local function sharetable_service()
 
 	local function querylist(source, filenamelist)
 		local ptrList = {}
-        for _, filename in ipairs(filenamelist) do
-            if files[filename] then
-                ptrList[filename] = query_file(source, filename)
-            end
-        end
+		for _, filename in ipairs(filenamelist) do
+			if files[filename] then
+				ptrList[filename] = query_file(source, filename)
+			end
+		end
 		return ptrList
 	end
 
@@ -110,11 +204,11 @@ local function sharetable_service()
 		return ptrList
 	end
 
-    function sharetable.queryall(source, filenamelist)
+	function sharetable.queryall(source, filenamelist)
 		local queryFunc = filenamelist and querylist or queryall
 		local ptrList = queryFunc(source, filenamelist)
-        skynet.ret(skynet.pack(ptrList))
-    end
+		skynet.ret(skynet.pack(ptrList))
+	end
 
 	function sharetable.close(source)
 		local list = clients[source]
@@ -216,283 +310,47 @@ function sharetable.loadtable(filename, tbl)
 	skynet.call(sharetable.address, "lua", "loadtable", filename, skynet.pack(tbl))
 end
 
+function sharetable.merge(values)
+	assert(type(values) == "table", "ShareTable merge values must be a table")
+	for filename, value in pairs(values) do
+		assert(type(filename) == "string", "ShareTable merge name must be a string")
+		assert(type(value) == "table", "ShareTable merge value must be a table")
+	end
 
-local RECORD = {}
+	local packed = {}
+	local ok, err = xpcall(function()
+		for filename, value in pairs(values) do
+			local ptr, len = skynet.pack(value)
+			packed[#packed + 1] = filename
+			packed[#packed + 1] = ptr
+			packed[#packed + 1] = len
+		end
+	end, debug.traceback)
+	if not ok then
+		for i = 1, #packed, 3 do
+			skynet.trash(packed[i + 1], packed[i + 2])
+		end
+		error(err, 0)
+	end
+	if #packed == 0 then
+		return true
+	end
+	return skynet.call(sharetable.address, "lua", "merge", packed)
+end
 function sharetable.query(filename)
 	local newptr = skynet.call(sharetable.address, "lua", "query", filename)
 	if newptr then
-		local t = core.clone(newptr)
-		local map = RECORD[filename]
-		if not map then
-			map = {}
-			RECORD[filename] = map
-		end
-		map[t] = true
-		return t
+		return core.clone(newptr)
 	end
 end
 
 function sharetable.queryall(filenamelist)
-    local list, t, map = {}
-    local ptrList = skynet.call(sharetable.address, "lua", "queryall", filenamelist)
-    for filename, ptr in pairs(ptrList) do
-        t = core.clone(ptr)
-        map = RECORD[filename]
-        if not map then
-            map = {}
-            RECORD[filename] = map
-        end
-        map[t] = true
-        list[filename] = t
-    end
-    return list
-end
-
-local pairs = pairs
-local type = type
-local assert = assert
-local next = next
-local rawset = rawset
-local getuservalue = debug.getuservalue
-local setuservalue = debug.setuservalue
-local getupvalue = debug.getupvalue
-local setupvalue = debug.setupvalue
-local getlocal = debug.getlocal
-local setlocal = debug.setlocal
-local getinfo = debug.getinfo
-
-local NILOBJ = {}
-local function insert_replace(old_t, new_t, replace_map)
-    for k, ov in pairs(old_t) do
-        if type(ov) == "table" then
-            local nv = new_t[k]
-            if nv == nil then
-                nv = NILOBJ
-            end
-            assert(replace_map[ov] == nil)
-            replace_map[ov] = nv
-            nv = type(nv) == "table" and nv or NILOBJ
-            insert_replace(ov, nv, replace_map)
-        end
-    end
-    replace_map[old_t] = new_t
-    return replace_map
-end
-
-
-local function resolve_replace(replace_map)
-    local match = {}
-    local record_map = {}
-
-    local function getnv(v)
-        local nv = replace_map[v]
-        if nv then
-            if nv == NILOBJ then
-                return nil
-            end
-            return nv
-        end
-        assert(false)
-    end
-
-    local function match_value(v)
-        if v == nil or record_map[v] or is_sharedtable(v) then
-            return
-        end
-
-        local tv = type(v)
-        local f = match[tv]
-        if f then
-            record_map[v] = true
-            return f(v)
-        end
-    end
-
-    local function match_mt(v)
-        local mt = debug.getmetatable(v)
-        if mt then
-            local nv = replace_map[mt]
-            if nv then
-                nv = getnv(mt)
-                debug.setmetatable(v, nv)
-            else
-                return match_value(mt)
-            end
-        end
-    end
-
-    local function match_internmt()
-        local internal_types = {
-            pointer = debug.upvalueid(getnv, 1),
-            boolean = false,
-            str = "",
-            number = 42,
-            thread = coroutine.running(),
-            func = getnv,
-        }
-        for _,v in pairs(internal_types) do
-            match_mt(v)
-        end
-        return match_mt(nil)
-    end
-
-
-    local function match_table(t)
-        local keys = false
-        for k,v in next, t do
-            local tk = type(k)
-            if match[tk] then
-                keys = keys or {}
-                keys[#keys+1] = k
-            end
-
-            local nv = replace_map[v]
-            if nv then
-                nv = getnv(v)
-                rawset(t, k, nv)
-            else
-                match_value(v)
-            end
-        end
-
-        if keys then
-            for _, old_k in ipairs(keys) do
-                local new_k = replace_map[old_k]
-                if new_k then
-                    local value = rawget(t, old_k)
-                    new_k = getnv(old_k)
-                    rawset(t, old_k, nil)
-                    if new_k then
-                        rawset(t, new_k, value)
-                    end
-                else
-                    match_value(old_k)
-                end
-            end
-        end
-        return match_mt(t)
-    end
-
-    local function match_userdata(u)
-        local uv = getuservalue(u)
-        local nv = replace_map[uv]
-        if nv then
-            nv = getnv(uv)
-            setuservalue(u, nv)
-        end
-        return match_mt(u)
-    end
-
-    local function match_funcinfo(info)
-        local func = info.func
-        local nups = info.nups
-        for i=1,nups do
-            local name, upv = getupvalue(func, i)
-            local nv = replace_map[upv]
-            if nv then
-                nv = getnv(upv)
-                setupvalue(func, i, nv)
-            elseif upv then
-                match_value(upv)
-            end
-        end
-
-        local level = info.level
-        local curco = info.curco
-        if not level then
-            return
-        end
-        local i = 1
-        while true do
-            local name, v = getlocal(curco, level, i)
-            if name == nil then
-                break
-            end
-            if replace_map[v] then
-                local nv = getnv(v)
-                setlocal(curco, level, i, nv)
-            elseif v then
-                match_value(v)
-            end
-            i = i + 1
-        end
-    end
-
-    local function match_function(f)
-        local info = getinfo(f, "uf")
-        return match_funcinfo(info)
-    end
-
-    local function match_thread(co, level)
-        -- match stackvalues
-        local values = {}
-        local n = stackvalues(co, values)
-        for i=1,n do
-            local v = values[i]
-            match_value(v)
-        end
-
-        local uplevel = co == coroutine.running() and 1 or 0
-        level = level or 1
-        while true do
-            local info = getinfo(co, level, "uf")
-            if not info then
-                break
-            end
-            info.level = level + uplevel
-            info.curco = co
-            match_funcinfo(info)
-            level = level + 1
-        end
-    end
-
-    local function prepare_match()
-        local co = coroutine.running()
-        record_map[co] = true
-        record_map[match] = true
-        record_map[RECORD] = true
-        record_map[record_map] = true
-        record_map[replace_map] = true
-        record_map[insert_replace] = true
-        record_map[resolve_replace] = true
-        assert(getinfo(co, 3, "f").func == sharetable.update)
-        match_thread(co, 5) -- ignore match_thread and match_funcinfo frame
-    end
-
-    match["table"] = match_table
-    match["function"] = match_function
-    match["userdata"] = match_userdata
-    match["thread"] = match_thread
-
-    prepare_match()
-    match_internmt()
-
-    local root = debug.getregistry()
-    assert(replace_map[root] == nil)
-    match_table(root)
-end
-
-
-function sharetable.update(...)
-	local names = {...}
-	local replace_map = {}
-	for _, name in ipairs(names) do
-		local map = RECORD[name]
-		if map then
-			local new_t = sharetable.query(name)
-			for old_t,_ in pairs(map) do
-				if old_t ~= new_t then
-					insert_replace(old_t, new_t, replace_map)
-                    map[old_t] = nil
-				end
-			end
-		end
+	local list = {}
+	local ptrList = skynet.call(sharetable.address, "lua", "queryall", filenamelist)
+	for filename, ptr in pairs(ptrList) do
+		list[filename] = core.clone(ptr)
 	end
-
-    if next(replace_map) then
-        resolve_replace(replace_map)
-    end
+	return list
 end
 
 return sharetable
-

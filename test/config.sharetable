@@ -1,0 +1,10 @@
+include "../examples/config.path"
+
+thread = 4
+logger = nil
+logpath = "."
+harbor = 0
+start = "testsharetable"
+bootstrap = "snlua bootstrap"
+cpath = root .. "cservice/?.so"
+profile = false

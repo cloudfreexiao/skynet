@@ -5,6 +5,7 @@
 #include "skynet_handle.h"
 #include "skynet_mq.h"
 #include "skynet_timer.h"
+#include "skynet_worker_control.h"
 #include "skynet_harbor.h"
 #include "skynet_env.h"
 #include "skynet_monitor.h"
@@ -331,6 +332,8 @@ skynet_context_message_dispatch(struct skynet_monitor *sm, struct message_queue 
 		}
 
 		skynet_monitor_trigger(sm, 0,0);
+		if (skynet_worker_control_stop_requested())
+			break;
 	}
 
 	assert(q == ctx->queue);
