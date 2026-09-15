@@ -10,6 +10,9 @@
 #include <lua.h>
 #include <lauxlib.h>
 
+#ifndef OPENSSL_THREADS
+#error "OpenSSL was compiled without thread support"
+#endif
 
 static bool TLS_IS_INIT = false;
 
