@@ -236,7 +236,7 @@ handoff_completion(const struct skynet_worker_control_task *task,
 
 static int
 wait_until_locked(struct worker_control *c, uint64_t deadline_us) {
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(__APPLE__)
 	const uint64_t now_us = monotonic_time_us();
 	if (deadline_us <= now_us)
 		return ETIMEDOUT;
